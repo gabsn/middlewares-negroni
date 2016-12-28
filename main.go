@@ -6,17 +6,21 @@ import (
 	"net/http"
 
 	"github.com/codegangsta/negroni"
+	"github.com/gorilla/context"
 	"github.com/gorilla/mux"
 )
 
 func middlewareFirst(w http.ResponseWriter, r *http.Request, next http.HandlerFunc) {
-	log.Println("Before MiddlewareFirst")
-	next(w, r)
-	log.Println("After MiddlewareFirst")
+	if r.Header.Get("X-AppToken") == "1234" {
+		log.Printf("Authorized to the system")
+		context.Set(r, "user", "Gopher")
+		next(w, r)
+	} else {
+		http.Error(w, "Not Authorized", 401)
+	}
 }
 
 func middlewareSecond(w http.ResponseWriter, r *http.Request, next http.HandlerFunc) {
-	log.Println("Before MiddlewareSecond")
 	if r.URL.Path == "/message" {
 		if r.URL.Query().Get("password") == "password" {
 			next(w, r)
@@ -28,12 +32,12 @@ func middlewareSecond(w http.ResponseWriter, r *http.Request, next http.HandlerF
 	} else {
 		next(w, r)
 	}
-	log.Println("After MiddlewareSecond")
 }
 
 func index(w http.ResponseWriter, r *http.Request) {
 	log.Println("Executing index Handler")
-	fmt.Fprintf(w, "Welcome")
+	user := context.Get(r, "user")
+	fmt.Fprintf(w, "Welcome %s!", user)
 }
 
 func message(w http.ResponseWriter, r *http.Request) {
